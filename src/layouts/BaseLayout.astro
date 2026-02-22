@@ -1,0 +1,64 @@
+---
+import "../styles/global.css";
+
+const { title, description } = Astro.props;
+const path = Astro.url.pathname;
+
+const nav = [
+  { href: "/", label: "Home" },
+  { href: "/about", label: "About" },
+  { href: "/blog", label: "Blog" },
+];
+---
+
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{title ? `${title} | Leo` : "Leo"}</title>
+    {description && <meta name="description" content={description} />}
+    <link rel="icon" type="image/jpeg" href="/images/header-cat.jpg" />
+    <link rel="shortcut icon" href="/images/header-cat.jpg" />
+  </head>
+  <body>
+    <header class="site">
+      <div class="container">
+        <div class="nav">
+          <a class="brand" href="/">
+            <img
+              class="brand-avatar"
+              src="/images/header-cat.jpg"
+              alt="Home"
+              width="40"
+              height="40"
+              loading="eager"
+              decoding="async"
+            />
+          </a>
+          <nav class="navlinks">
+            {nav.map((item) => (
+              <a
+                href={item.href}
+                aria-current={path === item.href || (item.href !== "/" && path.startsWith(item.href)) ? "page" : undefined}
+              >
+                {item.label}
+              </a>
+            ))}
+          </nav>
+        </div>
+      </div>
+    </header>
+
+    <main class="container">
+      <slot />
+    </main>
+
+    <footer>
+      <div class="container">
+        <div class="meta">
+          © {new Date().getFullYear()} Leo(a.k.a Nyleon)
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

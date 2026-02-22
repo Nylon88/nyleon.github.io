@@ -1,114 +1,170 @@
----
-import { Image } from 'astro:assets';
-import { getCollection } from 'astro:content';
-import BaseHead from '../../components/BaseHead.astro';
-import Footer from '../../components/Footer.astro';
-import FormattedDate from '../../components/FormattedDate.astro';
-import Header from '../../components/Header.astro';
-import { SITE_DESCRIPTION, SITE_TITLE } from '../../consts';
+﻿---
+import { getCollection } from "astro:content";
+import BaseLayout from "../../layouts/BaseLayout.astro";
 
-const posts = (await getCollection('blog')).sort(
-	(a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf(),
+const posts = (await getCollection("blog", ({ data }) => !data.draft)).sort(
+  (a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf(),
 );
+
+const groupedTags = posts.reduce((map, post) => {
+  for (const tag of post.data.tags) {
+    const taggedPosts = map.get(tag) ?? [];
+    taggedPosts.push(post);
+    map.set(tag, taggedPosts);
+  }
+  return map;
+}, new Map<string, typeof posts>());
+
+const tagEntries = Array.from(groupedTags.entries()).sort((a, b) => {
+  if (b[1].length !== a[1].length) {
+    return b[1].length - a[1].length;
+  }
+  return a[0].localeCompare(b[0]);
+});
+
+const formatDate = (date: Date) =>
+  new Intl.DateTimeFormat("ja-JP", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(date);
 ---
 
-<!doctype html>
-<html lang="en">
-	<head>
-		<BaseHead title={SITE_TITLE} description={SITE_DESCRIPTION} />
-		<style>
-			main {
-				width: 960px;
-			}
-			ul {
-				display: flex;
-				flex-wrap: wrap;
-				gap: 2rem;
-				list-style-type: none;
-				margin: 0;
-				padding: 0;
-			}
-			ul li {
-				width: calc(50% - 1rem);
-			}
-			ul li * {
-				text-decoration: none;
-				transition: 0.2s ease;
-			}
-			ul li:first-child {
-				width: 100%;
-				margin-bottom: 1rem;
-				text-align: center;
-			}
-			ul li:first-child img {
-				width: 100%;
-			}
-			ul li:first-child .title {
-				font-size: 2.369rem;
-			}
-			ul li img {
-				margin-bottom: 0.5rem;
-				border-radius: 12px;
-			}
-			ul li a {
-				display: block;
-			}
-			.title {
-				margin: 0;
-				color: rgb(var(--black));
-				line-height: 1;
-			}
-			.date {
-				margin: 0;
-				color: rgb(var(--gray));
-			}
-			ul li a:hover h4,
-			ul li a:hover .date {
-				color: rgb(var(--accent));
-			}
-			ul a:hover img {
-				box-shadow: var(--box-shadow);
-			}
-			@media (max-width: 720px) {
-				ul {
-					gap: 0.5em;
-				}
-				ul li {
-					width: 100%;
-					text-align: center;
-				}
-				ul li:first-child {
-					margin-bottom: 0;
-				}
-				ul li:first-child .title {
-					font-size: 1.563em;
-				}
-			}
-		</style>
-	</head>
-	<body>
-		<Header />
-		<main>
-			<section>
-				<ul>
-					{
-						posts.map((post) => (
-							<li>
-								<a href={`/blog/${post.id}/`}>
-									{post.data.heroImage && (
-										<Image width={720} height={360} src={post.data.heroImage} alt="" />
-									)}
-									<h4 class="title">{post.data.title}</h4>
-									<p class="date">
-										<FormattedDate date={post.data.pubDate} />
-									</p>
-								</a>
-							</li>
-						))
-					}
-				</ul>
-			</section>
-		</main>
-		<Footer />
-	</body>
-</html>
+<BaseLayout title="Blog" description="Security and technical notes by Leo">
+  <div class="grid blog-shell">
+    <section class="card list col-8 blog-latest">
+      <h1>Posts</h1>
+      <p class="meta">公開日の新しい順で表示しています。</p>
+      <p class="meta" data-filter-summary>すべてのタグを表示中</p>
+      {
+        posts.length === 0 ? (
+          <p class="meta">まだ記事がありません。</p>
+        ) : (
+          <>
+            <ul class="blog-posts">
+              {posts.map((post) => (
+                <li
+                  class="blog-post-item"
+                  data-post-item
+                  data-tags={post.data.tags.map((tag) => tag.toLowerCase()).join(",")}
+                >
+                  <a class="post-link" href={`/blog/${post.id.replace(/\.md$/, "")}/`}>
+                    <span>{post.data.title}</span>
+                    <span class="post-arrow" aria-hidden="true">-&gt;</span>
+                  </a>
+                  <div class="meta">
+                    {formatDate(post.data.pubDate)}
+                    {" · "}
+                    {post.data.description}
+                  </div>
+                  {post.data.tags.length > 0 && (
+                    <div class="blog-post-tags" aria-label="Post tags">
+                      {post.data.tags.map((tag) => (
+                        <span class="blog-post-tag">{tag}</span>
+                      ))}
+                    </div>
+                  )}
+                </li>
+              ))}
+            </ul>
+            <p class="meta blog-empty" data-empty-message hidden>
+              このタグに一致する記事はありません。
+            </p>
+          </>
+        )
+      }
+    </section>
+
+    <aside class="card note col-4 tag-panel" data-blog-filter>
+      <h2>Tags</h2>
+      {
+        tagEntries.length === 0 ? (
+          <p class="meta">タグ付きの記事はまだありません。</p>
+        ) : (
+          <div class="tag-index tag-filter-buttons">
+            <button
+              type="button"
+              class="tag-pill is-active"
+              data-tag-filter="all"
+              aria-pressed="true"
+            >
+              <span>all</span>
+              <span class="tag-count">{posts.length}</span>
+            </button>
+            {tagEntries.map(([tag, taggedPosts]) => (
+              <button
+                type="button"
+                class="tag-pill"
+                data-tag-filter={tag.toLowerCase()}
+                aria-pressed="false"
+              >
+                <span>{tag}</span>
+                <span class="tag-count">{taggedPosts.length}</span>
+              </button>
+            ))}
+          </div>
+        )
+      }
+    </aside>
+  </div>
+
+  <script is:inline>
+    const filterRoot = document.querySelector("[data-blog-filter]");
+    const filterSummary = document.querySelector("[data-filter-summary]");
+    const emptyMessage = document.querySelector("[data-empty-message]");
+    const postItems = Array.from(document.querySelectorAll("[data-post-item]"));
+
+    if (filterRoot && postItems.length > 0) {
+      const buttons = Array.from(filterRoot.querySelectorAll("[data-tag-filter]"));
+      const validTags = new Set(buttons.map((button) => button.dataset.tagFilter || "all"));
+
+      const applyFilter = (tag) => {
+        const activeTag = validTags.has(tag) ? tag : "all";
+        let visibleCount = 0;
+
+        for (const item of postItems) {
+          const tags = (item.dataset.tags || "").split(",").filter(Boolean);
+          const visible = activeTag === "all" || tags.includes(activeTag);
+          item.hidden = !visible;
+          if (visible) {
+            visibleCount += 1;
+          }
+        }
+
+        for (const button of buttons) {
+          const isActive = (button.dataset.tagFilter || "all") === activeTag;
+          button.classList.toggle("is-active", isActive);
+          button.setAttribute("aria-pressed", String(isActive));
+        }
+
+        if (filterSummary) {
+          filterSummary.textContent =
+            activeTag === "all"
+              ? `${visibleCount}件を表示中（全タグ）`
+              : `${visibleCount}件を表示中（tag: ${activeTag}）`;
+        }
+
+        if (emptyMessage) {
+          emptyMessage.hidden = visibleCount > 0;
+        }
+
+        const url = new URL(window.location.href);
+        if (activeTag === "all") {
+          url.searchParams.delete("tag");
+        } else {
+          url.searchParams.set("tag", activeTag);
+        }
+        history.replaceState({}, "", url);
+      };
+
+      for (const button of buttons) {
+        button.addEventListener("click", () => {
+          applyFilter(button.dataset.tagFilter || "all");
+        });
+      }
+
+      const initialTag = new URL(window.location.href).searchParams.get("tag") || "all";
+      applyFilter(initialTag.toLowerCase());
+    }
+  </script>
+</BaseLayout>

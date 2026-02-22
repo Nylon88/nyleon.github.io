@@ -52,6 +52,14 @@ All commands are run from the root of the project, from a terminal:
 | `npm run preview`         | Preview your build locally, before deploying     |
 | `npm run astro ...`       | Run CLI commands like `astro add`, `astro check` |
 | `npm run astro -- --help` | Get help using the Astro CLI                     |
+| `npm run security:check`  | Scan tracked files for obvious secrets           |
+
+## Public Repo Safety Checklist
+
+- Run `npm run security:check` before pushing.
+- Keep secrets only in local `.env.*` files (already gitignored).
+- Never commit private key/cert files (`*.pem`, `*.key`, `*.p12`, etc.).
+- If you upload personal photos, strip EXIF metadata first.
 
 ## 👀 Want to learn more?
 
